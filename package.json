@@ -5,9 +5,13 @@
   "scripts": {
     "dev": "vite --port 3005",
     "server": "node server/index.js",
+    "start": "node server/index.prod.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",

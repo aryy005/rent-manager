@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: rentmaster-api
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false        # set manually in Render dashboard
+      - key: FRONTEND_URL
+        sync: false        # set to your Vercel URL after deploying frontend
+      - key: PORT
+        value: 10000
