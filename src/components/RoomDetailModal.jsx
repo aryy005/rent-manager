@@ -92,6 +92,7 @@ export default function RoomDetailModal({ room, isOpen, onClose, onRefresh }) {
       toast.success('Bill saved!');
       setBillForm(f => ({ ...f, electric: '', water: '', other: '0' }));
       loadData();
+      onRefresh(); // ← refresh pending banner on home screen
     } catch (err) { toast.error(err.message); } finally { setAddingBill(false); }
   };
 
