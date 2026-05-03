@@ -507,8 +507,20 @@ app.patch('/api/rooms/:roomId/rent', auth, async (req, res) => {
 
 // ── START ─────────────────────────────────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 })
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to MongoDB Atlas');
+
+    // ── ONE-TIME MIGRATION: drop old roomId+year+month unique index on Bills ──
+    // This was replaced by tenantId+year+month to support mid-month tenant changes.
+    try {
+      await Bill.collection.dropIndex('roomId_1_year_1_month_1');
+      console.log('✅ Migration: dropped old bills index (roomId+year+month)');
+    } catch (e) {
+      // Index doesn't exist anymore — that's fine, skip silently
+      if (e.code !== 27) console.warn('⚠️  Migration note:', e.message);
+    }
+    // ── END MIGRATION ─────────────────────────────────────────────────────────
+
     app.listen(PORT, () => {
       console.log(`✅ RentMaster API (production) → port ${PORT}`);
       startKeepAlive();
