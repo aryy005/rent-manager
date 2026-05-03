@@ -307,12 +307,15 @@ app.post('/api/rooms/:id/bills', auth, async (req, res) => {
 app.patch('/api/bills/:id/status', auth, async (req, res) => {
   try {
     const { is_paid } = req.body;
-    const bill = await Bill.findById(req.params.id);
-    if (!bill) return res.status(404).json({ error: 'Bill not found' });
-    bill.isPaid = !!is_paid;
-    bill.paidAt = is_paid ? new Date() : null;
-    await bill.save();
-    res.json(billShape(bill));
+    const paidAt = is_paid ? new Date() : null;
+    // findByIdAndUpdate avoids triggering full index re-validation (no duplicate key errors)
+    const result = await Bill.findByIdAndUpdate(
+      req.params.id,
+      { $set: { isPaid: !!is_paid, paidAt } },
+      { new: true }
+    );
+    if (!result) return res.status(404).json({ error: 'Bill not found' });
+    res.json(billShape(result));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -510,14 +513,19 @@ mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 })
   .then(async () => {
     console.log('✅ Connected to MongoDB Atlas');
 
-    // ── ONE-TIME MIGRATION: drop old roomId+year+month unique index on Bills ──
-    // This was replaced by tenantId+year+month to support mid-month tenant changes.
-    try {
-      await Bill.collection.dropIndex('roomId_1_year_1_month_1');
-      console.log('✅ Migration: dropped old bills index (roomId+year+month)');
-    } catch (e) {
-      // Index doesn't exist anymore — that's fine, skip silently
-      if (e.code !== 27) console.warn('⚠️  Migration note:', e.message);
+    // ── ONE-TIME MIGRATION: drop legacy indexes from Bills collection ──────────
+    const indexDrops = [
+      'roomId_1_year_1_month_1',  // old unique index (now non-unique)
+      'localId_1',                // legacy offline-sync field, no longer used
+    ];
+    for (const idx of indexDrops) {
+      try {
+        await Bill.collection.dropIndex(idx);
+        console.log(`✅ Migration: dropped old bills index (${idx})`);
+      } catch (e) {
+        if (e.code !== 27) console.warn(`⚠️  Migration note (${idx}):`, e.message);
+        // code 27 = IndexNotFound — already dropped, safe to ignore
+      }
     }
     // ── END MIGRATION ─────────────────────────────────────────────────────────
 
