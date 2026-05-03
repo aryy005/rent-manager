@@ -28,6 +28,9 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // ── Keep-alive (no auth needed) ───────────────────────────────────────────
+  ping: () => fetch(`${BASE_URL}/api/health`).then(r => r.json()),
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   signup: (data)  => request('/auth/signup', { method: 'POST', body: data }),
   login:  (data)  => request('/auth/login',  { method: 'POST', body: data }),

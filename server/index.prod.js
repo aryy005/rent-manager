@@ -498,9 +498,46 @@ app.patch('/api/rooms/:roomId/rent', auth, async (req, res) => {
 mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 })
   .then(() => {
     console.log('✅ Connected to MongoDB Atlas');
-    app.listen(PORT, () => console.log(`✅ RentMaster API (production) → port ${PORT}`));
+    app.listen(PORT, () => {
+      console.log(`✅ RentMaster API (production) → port ${PORT}`);
+      startKeepAlive();
+    });
   })
   .catch(err => {
     console.error('❌ MongoDB connection failed:', err.message);
     process.exit(1);
   });
+
+// ── KEEP-ALIVE SELF-PING (prevents Render free tier sleep) ───────────────────
+function startKeepAlive() {
+  // Render automatically provides the public URL as RENDER_EXTERNAL_URL
+  const selfUrl = process.env.RENDER_EXTERNAL_URL || process.env.SELF_URL;
+  if (!selfUrl) {
+    console.log('ℹ️  Keep-alive disabled (RENDER_EXTERNAL_URL not set — local dev mode)');
+    return;
+  }
+
+  const pingUrl = `${selfUrl}/api/health`;
+  const intervalMs = 10 * 60 * 1000; // ping every 10 minutes
+
+  const { get } = pingUrl.startsWith('https') ? require('https') : require('http');
+
+  const ping = () => {
+    const req = get(pingUrl, (res) => {
+      console.log(`💓 Keep-alive ping → ${pingUrl} [${res.statusCode}] at ${new Date().toISOString()}`);
+    });
+    req.on('error', (err) => {
+      console.warn(`⚠️  Keep-alive ping failed: ${err.message}`);
+    });
+    req.end();
+  };
+
+  // First ping after 2 minutes (let server settle), then every 10 min
+  setTimeout(() => {
+    ping();
+    setInterval(ping, intervalMs);
+  }, 2 * 60 * 1000);
+
+  console.log(`💓 Keep-alive started — pinging ${pingUrl} every 10 minutes`);
+}
+

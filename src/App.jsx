@@ -7,6 +7,7 @@ import { api } from './utils/api';
 import { authStore } from './utils/auth';
 import { themeStore } from './utils/theme';
 import { toast } from './utils/toast';
+import { useKeepAlive } from './utils/keepAlive';
 import { formatINR } from './utils/helpers';
 import StatsPanel        from './components/StatsPanel';
 import AddRoomModal      from './components/AddRoomModal';
@@ -25,6 +26,9 @@ export default function App() {
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [theme, setTheme] = useState(() => themeStore.get());
   const navigate = useNavigate();
+
+  // Wake up Render server on load & keep alive every 10 min
+  useKeepAlive();
 
   const toggleTheme = () => {
     const next = themeStore.toggle();
