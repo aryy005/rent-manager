@@ -17,11 +17,15 @@ export default function PendingRentBanner({ pending, year, month, onBillCreated,
   const setField = (roomId, field, value) =>
     setForms(p => ({ ...p, [roomId]: { ...p[roomId], [field]: value } }));
 
-  const getForm = (room) => forms[room.room_id] || {
-    rent:     room.rent     ?? room.base_rent ?? '',
-    electric: room.electric ?? '',
-    water:    room.water    ?? '',
-    other:    room.other    ?? '0',
+  const getForm = (room) => {
+    const saved = forms[room.room_id];
+    // If user has typed something in this session, use that; otherwise use the bill/base values
+    return saved || {
+      rent:     room.rent     ?? room.base_rent ?? '',
+      electric: room.electric ?? '',
+      water:    room.water    ?? '',
+      other:    room.other    ?? '0',
+    };
   };
 
   const handleCreateAndPay = async (room) => {
@@ -145,8 +149,10 @@ export default function PendingRentBanner({ pending, year, month, onBillCreated,
 
             return (
               <div key={room.room_id} style={{
-                background: 'rgba(0,0,0,0.25)', borderRadius: '10px',
-                border: '1px solid var(--border)', padding: '1rem 1.25rem',
+                background: hasBill ? 'rgba(245,158,11,0.06)' : 'rgba(0,0,0,0.25)',
+                borderRadius: '10px',
+                border: hasBill ? '1px solid rgba(245,158,11,0.25)' : '1px solid var(--border)',
+                padding: '1rem 1.25rem',
               }}>
                 {/* Room header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
@@ -164,7 +170,7 @@ export default function PendingRentBanner({ pending, year, month, onBillCreated,
                         borderRadius: '999px', background: 'rgba(245,158,11,0.15)',
                         border: '1px solid rgba(245,158,11,0.3)', color: 'var(--warning)',
                       }}>
-                        Bill created · Unpaid
+                        📋 Bill Exists · Unpaid
                       </span>
                     )}
                   </div>
@@ -196,22 +202,27 @@ export default function PendingRentBanner({ pending, year, month, onBillCreated,
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
                     Total: <strong style={{ color: 'var(--text-main)' }}>{formatINR(total)}</strong>
+                    {hasBill && <span style={{ fontSize: '0.78rem', color: 'var(--warning)', marginLeft: '0.75rem' }}>· Edit amounts above to update</span>}
                   </span>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => handleSaveUnpaid(room)}
-                      disabled={isSaving}
-                    >
-                      Save as Unpaid
-                    </button>
+                    {/* Only show Save as Unpaid when no bill exists yet */}
+                    {!hasBill && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => handleSaveUnpaid(room)}
+                        disabled={isSaving}
+                      >
+                        Save as Unpaid
+                      </button>
+                    )}
                     <button
                       className="btn btn-primary btn-sm"
                       onClick={() => handleCreateAndPay(room)}
                       disabled={isSaving}
+                      style={hasBill ? { background: 'var(--success)', borderColor: 'var(--success)' } : {}}
                     >
                       <CheckCircle size={15} />
-                      {isSaving ? 'Saving…' : 'Mark as Paid'}
+                      {isSaving ? 'Saving…' : hasBill ? '✓ Collect & Mark Paid' : 'Mark as Paid'}
                     </button>
                   </div>
                 </div>
