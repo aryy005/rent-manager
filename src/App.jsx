@@ -10,6 +10,7 @@ import StatusToggleModal from './components/StatusToggleModal';
 import PendingRentBanner from './components/PendingRentBanner';
 import ExportModal      from './components/ExportModal';
 import ToastContainer   from './components/ToastContainer';
+import ConfirmModal     from './components/ConfirmModal';
 
 
 export default function App() {
@@ -20,6 +21,8 @@ export default function App() {
   const [exportOpen, setExportOpen]   = useState(false);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [toggleRoom, setToggleRoom] = useState(null);
+  // confirmState: { room, step } — drives the ConfirmModal flow
+  const [confirmState, setConfirmState] = useState(null);
 
   // Pending rent state
   const [pendingData, setPendingData] = useState({ year: 0, month: 0, pending: [] });
@@ -64,23 +67,21 @@ export default function App() {
     fetchPending();
   }, [fetchPending]);
 
-  const handleDeleteRoom = useCallback(async (room) => {
-    if (room.is_occupied) {
-      // Step 1 — warn about tenant data loss
-      const step1 = window.confirm(
-        `⚠️ Room ${room.number} is currently occupied by ${room.tenant_name}.\n\n` +
-        `Deleting this room will permanently remove the tenant and ALL billing history.\n\n` +
-        `Are you sure you want to continue?`
-      );
-      if (!step1) return;
-      // Step 2 — final confirmation
-      const step2 = window.confirm(
-        `🚨 FINAL CONFIRMATION\n\nYou are about to permanently delete Room ${room.number} and all its data. This CANNOT be undone.\n\nClick OK to delete.`
-      );
-      if (!step2) return;
-    } else {
-      if (!window.confirm(`Are you sure you want to delete Room ${room.number}?`)) return;
+  // Opens the first confirmation modal
+  const handleDeleteRoom = useCallback((room) => {
+    setConfirmState({ room, step: 1 });
+  }, []);
+
+  // Called when user clicks confirm inside the modal
+  const handleConfirmStep = useCallback(async () => {
+    const { room, step } = confirmState;
+    if (room.is_occupied && step === 1) {
+      // Occupied room — go to step 2
+      setConfirmState({ room, step: 2 });
+      return;
     }
+    // Vacant room (step 1) or occupied room (step 2) — actually delete
+    setConfirmState(null);
     try {
       await api.deleteRoom(room.id);
       toast.success(`Room ${room.number} deleted.`);
@@ -89,7 +90,7 @@ export default function App() {
     } catch (e) {
       toast.error(e.message || 'Failed to delete room.');
     }
-  }, [fetchRooms, fetchPending]);
+  }, [confirmState, fetchRooms, fetchPending]);
 
   const occupiedRooms  = rooms.filter(r => r.is_occupied);
   const totalBaseRent  = occupiedRooms.reduce((s, r) => s + (r.base_rent || 0), 0);
@@ -181,6 +182,41 @@ export default function App() {
         onClose={() => setSelectedRoom(null)}
         onRefresh={handleRefresh}
       />
+
+      {/* Delete confirmation modal — step 1 */}
+      {confirmState?.step === 1 && (
+        <ConfirmModal
+          isOpen
+          title={confirmState.room.is_occupied ? 'Delete Occupied Room?' : `Delete Room ${confirmState.room.number}?`}
+          message={
+            confirmState.room.is_occupied
+              ? `Room ${confirmState.room.number} is currently occupied by ${confirmState.room.tenant_name}.`
+              : `Are you sure you want to delete Room ${confirmState.room.number}?`
+          }
+          subMessage={
+            confirmState.room.is_occupied
+              ? 'This will permanently remove the tenant and all billing history.'
+              : undefined
+          }
+          confirmLabel={confirmState.room.is_occupied ? 'Continue' : 'Delete'}
+          onConfirm={handleConfirmStep}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
+
+      {/* Delete confirmation modal — step 2 (occupied rooms only) */}
+      {confirmState?.step === 2 && (
+        <ConfirmModal
+          isOpen
+          title="Final Confirmation"
+          message={`You are about to permanently delete Room ${confirmState.room.number} and all its data.`}
+          subMessage="This action cannot be undone."
+          confirmLabel="Yes, Delete"
+          onConfirm={handleConfirmStep}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
+
       <StatusToggleModal
         room={toggleRoom}
         isOpen={!!toggleRoom}
