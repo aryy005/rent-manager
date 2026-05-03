@@ -287,63 +287,109 @@ export default function RoomDetailModal({ room, isOpen, onClose, onRefresh }) {
               <div className="stat-label" style={{ marginBottom: '0.75rem' }}>Bill History</div>
               {loading ? <div className="spinner" /> : bills.length === 0 ? (
                 <div className="empty"><Receipt size={40} /><p>No bills recorded yet</p></div>
-              ) : bills.map(b => (
-                <div key={b.id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '0.5rem',
-                  background: b.is_paid ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
-                  border: `1px solid ${b.is_paid ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem' }}>
-                      <span style={{ fontWeight: 600 }}>{getMonthName(b.month)} {b.year}</span>
-                      <span style={{
-                        fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.55rem',
-                        borderRadius: '999px',
-                        background: b.is_paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)',
-                        color: b.is_paid ? 'var(--success)' : 'var(--danger)',
-                        border: `1px solid ${b.is_paid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)'}`,
+              ) : bills.reduce((acc, b, idx) => {
+                const prev = bills[idx - 1];
+                const tenantChanged = prev && prev.tenant_id !== b.tenant_id;
+
+                // Insert a divider when tenant changes
+                if (tenantChanged) {
+                  acc.push(
+                    <div key={`divider-${idx}`} style={{
+                      display: 'flex', alignItems: 'center', gap: '0.75rem',
+                      margin: '1rem 0 0.75rem',
+                    }}>
+                      <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                        fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+                        background: 'var(--surface-2)', border: '1px solid var(--border)',
+                        padding: '0.3rem 0.75rem', borderRadius: '999px',
+                        whiteSpace: 'nowrap',
                       }}>
-                        {b.is_paid ? '✓ Paid' : 'Unpaid'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem', fontSize: '0.81rem', color: 'var(--text-sub)' }}>
-                      <span>Rent: {formatINR(b.rent)}</span>
-                      <span className="text-warning">⚡ {formatINR(b.electric)}</span>
-                      <span className="text-info">💧 {formatINR(b.water)}</span>
-                      {b.other > 0 && <span>Other: {formatINR(b.other)}</span>}
-                    </div>
-                    {b.is_paid && b.paid_at && (
-                      <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                        Paid on {new Date(b.paid_at).toLocaleDateString('en-IN')}
+                        <User size={11} />
+                        Tenant changed · Previous: {prev.tenant_name || 'Unknown'}
                       </div>
-                    )}
+                      <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                    </div>
+                  );
+                }
+
+                // Also show a tenant name header at the very first bill of each tenant group
+                const isFirstOfTenant = idx === 0 || tenantChanged;
+                if (isFirstOfTenant) {
+                  acc.push(
+                    <div key={`label-${b.id}`} style={{
+                      fontSize: '0.78rem', fontWeight: 700,
+                      color: 'var(--primary-light)',
+                      marginBottom: '0.5rem',
+                      paddingLeft: '0.25rem',
+                      display: 'flex', alignItems: 'center', gap: '0.35rem',
+                    }}>
+                      <User size={11} />
+                      {b.tenant_name || 'Unknown Tenant'}
+                    </div>
+                  );
+                }
+
+                acc.push(
+                  <div key={b.id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '0.85rem 1rem', borderRadius: '8px', marginBottom: '0.5rem',
+                    background: b.is_paid ? 'rgba(16,185,129,0.06)' : 'rgba(239,68,68,0.06)',
+                    border: `1px solid ${b.is_paid ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem' }}>
+                        <span style={{ fontWeight: 600 }}>{getMonthName(b.month)} {b.year}</span>
+                        <span style={{
+                          fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.55rem',
+                          borderRadius: '999px',
+                          background: b.is_paid ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.12)',
+                          color: b.is_paid ? 'var(--success)' : 'var(--danger)',
+                          border: `1px solid ${b.is_paid ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.25)'}`,
+                        }}>
+                          {b.is_paid ? '✓ Paid' : 'Unpaid'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '1rem', fontSize: '0.81rem', color: 'var(--text-sub)', flexWrap: 'wrap' }}>
+                        <span>Rent: {formatINR(b.rent)}</span>
+                        <span className="text-warning">⚡ {formatINR(b.electric)}</span>
+                        <span className="text-info">💧 {formatINR(b.water)}</span>
+                        {b.other > 0 && <span>Other: {formatINR(b.other)}</span>}
+                      </div>
+                      {b.is_paid && b.paid_at && (
+                        <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                          Paid on {new Date(b.paid_at).toLocaleDateString('en-IN')}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '1rem', flexShrink: 0 }}>
+                      <span style={{ fontWeight: 700, color: b.is_paid ? 'var(--success)' : 'var(--danger)' }}>
+                        {formatINR(b.rent + b.electric + b.water + b.other)}
+                      </span>
+                      {!b.is_paid && (
+                        <button
+                          onClick={() => handleTogglePaid(b)}
+                          disabled={togglingBill === b.id}
+                          className="btn btn-sm"
+                          title="Tenant has paid — mark as paid"
+                          style={{
+                            background: 'rgba(16,185,129,0.12)',
+                            border: '1px solid rgba(16,185,129,0.35)',
+                            color: 'var(--success)',
+                            minWidth: '110px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <CheckCircle size={14} />
+                          {togglingBill === b.id ? 'Saving…' : 'Mark as Paid'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '1rem', flexShrink: 0 }}>
-                    <span style={{ fontWeight: 700, color: b.is_paid ? 'var(--success)' : 'var(--danger)' }}>
-                      {formatINR(b.rent + b.electric + b.water + b.other)}
-                    </span>
-                    {!b.is_paid && (
-                      <button
-                        onClick={() => handleTogglePaid(b)}
-                        disabled={togglingBill === b.id}
-                        className="btn btn-sm"
-                        title="Tenant has paid — mark as paid"
-                        style={{
-                          background: 'rgba(16,185,129,0.12)',
-                          border: '1px solid rgba(16,185,129,0.35)',
-                          color: 'var(--success)',
-                          minWidth: '120px',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <CheckCircle size={14} />
-                        {togglingBill === b.id ? 'Saving…' : 'Mark as Paid'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+                return acc;
+              }, [])}
             </div>
           )}
 

@@ -57,20 +57,21 @@ function roomShape(room, tenant = null) {
   };
 }
 
-function billShape(bill) {
+function billShape(bill, tenantName = null) {
   return {
-    id:         bill._id.toString(),
-    tenant_id:  bill.tenantId.toString(),
-    room_id:    bill.roomId.toString(),
-    year:       bill.year,
-    month:      bill.month,
-    rent:       bill.rent,
-    electric:   bill.electric,
-    water:      bill.water,
-    other:      bill.other,
-    is_paid:    bill.isPaid ? 1 : 0,
-    paid_at:    bill.paidAt,
-    created_at: bill.createdAt,
+    id:           bill._id.toString(),
+    tenant_id:    bill.tenantId.toString(),
+    tenant_name:  tenantName,
+    room_id:      bill.roomId.toString(),
+    year:         bill.year,
+    month:        bill.month,
+    rent:         bill.rent,
+    electric:     bill.electric,
+    water:        bill.water,
+    other:        bill.other,
+    is_paid:      bill.isPaid ? 1 : 0,
+    paid_at:      bill.paidAt,
+    created_at:   bill.createdAt,
   };
 }
 
@@ -273,7 +274,13 @@ app.get('/api/rooms/:id/bills', auth, async (req, res) => {
     if (year)  filter.year  = Number(year);
     if (month) filter.month = Number(month);
     const bills = await Bill.find(filter).sort({ year: -1, month: -1 });
-    res.json(bills.map(billShape));
+
+    // Fetch all tenant names in one query
+    const tenantIds = [...new Set(bills.map(b => b.tenantId.toString()))];
+    const tenants   = await Tenant.find({ _id: { $in: tenantIds } }).select('_id name movedInAt movedOutAt');
+    const tenantMap = Object.fromEntries(tenants.map(t => [t._id.toString(), t]));
+
+    res.json(bills.map(b => billShape(b, tenantMap[b.tenantId.toString()]?.name ?? null)));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
