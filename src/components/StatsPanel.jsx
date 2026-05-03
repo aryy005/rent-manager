@@ -7,8 +7,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend
 const currentYear = new Date().getFullYear();
 const currentMonth = new Date().getMonth() + 1;
 
-export default function StatsPanel({ isOpen, onClose }) {
-  const [filter, setFilter] = useState('monthly'); // monthly | yearly
+export default function StatsPanel({ isOpen, onClose, propertyId }) {
+  const [filter, setFilter] = useState('monthly');
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(currentMonth);
   const [stats, setStats] = useState(null);
@@ -18,7 +18,7 @@ export default function StatsPanel({ isOpen, onClose }) {
     setLoading(true);
     try {
       const params = filter === 'monthly' ? { year, month } : { year };
-      const data = await api.getStats(params);
+      const data = await api.getStats(propertyId, params);
       setStats(data);
     } catch (e) {
       console.error(e);

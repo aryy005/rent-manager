@@ -3,7 +3,7 @@ import { X, PlusCircle } from 'lucide-react';
 import { api } from '../utils/api';
 import { toast } from '../utils/toast';
 
-export default function AddRoomModal({ isOpen, onClose, onAdded }) {
+export default function AddRoomModal({ isOpen, onClose, onAdded, propertyId }) {
   const [form, setForm] = useState({ number: '', base_rent: '' });
   const [saving, setSaving] = useState(false);
 
@@ -14,7 +14,7 @@ export default function AddRoomModal({ isOpen, onClose, onAdded }) {
     if (!form.number.trim()) return;
     setSaving(true);
     try {
-      const room = await api.addRoom({ number: form.number.trim(), base_rent: Number(form.base_rent) || 0 });
+      const room = await api.addRoom(propertyId, { number: form.number.trim(), base_rent: Number(form.base_rent) || 0 });
       toast.success(`Room ${room.number} added!`);
       setForm({ number: '', base_rent: '' });
       onAdded(room);

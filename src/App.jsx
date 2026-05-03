@@ -1,116 +1,191 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Building2, BarChart2, PlusCircle, Home, User, IndianRupee, RefreshCw, ToggleLeft, ToggleRight, Download, Trash2 } from 'lucide-react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Building2, BarChart2, PlusCircle, Home, User, IndianRupee,
+         RefreshCw, ToggleLeft, ToggleRight, Download, Trash2,
+         ArrowLeft, LogOut } from 'lucide-react';
 import { api } from './utils/api';
+import { authStore } from './utils/auth';
 import { toast } from './utils/toast';
 import { formatINR } from './utils/helpers';
-import StatsPanel       from './components/StatsPanel';
-import AddRoomModal     from './components/AddRoomModal';
-import RoomDetailModal  from './components/RoomDetailModal';
+import StatsPanel        from './components/StatsPanel';
+import AddRoomModal      from './components/AddRoomModal';
+import RoomDetailModal   from './components/RoomDetailModal';
 import StatusToggleModal from './components/StatusToggleModal';
 import PendingRentBanner from './components/PendingRentBanner';
-import ExportModal      from './components/ExportModal';
-import ToastContainer   from './components/ToastContainer';
-import ConfirmModal     from './components/ConfirmModal';
+import ExportModal       from './components/ExportModal';
+import ToastContainer    from './components/ToastContainer';
+import ConfirmModal      from './components/ConfirmModal';
+import AuthPage          from './pages/AuthPage';
+import PropertiesPage    from './pages/PropertiesPage';
 
-
+// ── Root App ──────────────────────────────────────────────────────────────────
 export default function App() {
-  const [rooms, setRooms]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [statsOpen, setStatsOpen]     = useState(false);
-  const [addRoomOpen, setAddRoomOpen] = useState(false);
-  const [exportOpen, setExportOpen]   = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [toggleRoom, setToggleRoom] = useState(null);
-  // confirmState: { room, step } — drives the ConfirmModal flow
-  const [confirmState, setConfirmState] = useState(null);
+  const [user, setUser] = useState(() => authStore.getUser());
+  const [selectedProperty, setSelectedProperty] = useState(null);
+  const navigate = useNavigate();
 
-  // Pending rent state
-  const [pendingData, setPendingData] = useState({ year: 0, month: 0, pending: [] });
-
-  const fetchRooms = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await api.getRooms();
-      setRooms(data);
-    } catch {
-      toast.error('Failed to load rooms. Is the server running?');
-    } finally {
-      setLoading(false);
+  // Keep user in sync on refresh
+  useEffect(() => {
+    if (authStore.isLoggedIn() && !user) {
+      api.getMe().then(u => { setUser(u); authStore.setUser(u); }).catch(() => {
+        authStore.clear(); setUser(null);
+      });
     }
   }, []);
 
-  const fetchPending = useCallback(async () => {
+  const handleAuth = (u) => { setUser(u); navigate('/properties'); };
+
+  const handleLogout = () => {
+    authStore.clear();
+    setUser(null);
+    setSelectedProperty(null);
+    navigate('/login');
+  };
+
+  const handleSelectProperty = (prop) => {
+    setSelectedProperty(prop);
+    navigate(`/property/${prop.id}`);
+  };
+
+  const handleBackToProperties = () => {
+    setSelectedProperty(null);
+    navigate('/properties');
+  };
+
+  return (
+    <>
+      <Routes>
+        <Route path="/login" element={
+          !authStore.isLoggedIn()
+            ? <AuthPage onAuth={handleAuth} />
+            : <Navigate to="/properties" replace />
+        } />
+        <Route path="/properties" element={
+          authStore.isLoggedIn()
+            ? <PropertiesPage user={user} onSelectProperty={handleSelectProperty} onLogout={handleLogout} />
+            : <Navigate to="/login" replace />
+        } />
+        <Route path="/property/:propertyId" element={
+          authStore.isLoggedIn()
+            ? <Dashboard
+                property={selectedProperty}
+                user={user}
+                onBack={handleBackToProperties}
+                onLogout={handleLogout}
+              />
+            : <Navigate to="/login" replace />
+        } />
+        <Route path="*" element={<Navigate to={authStore.isLoggedIn() ? '/properties' : '/login'} replace />} />
+      </Routes>
+      <ToastContainer />
+    </>
+  );
+}
+
+// ── Dashboard (existing room management, now property-scoped) ─────────────────
+function Dashboard({ property, user, onBack, onLogout }) {
+  const navigate = useNavigate();
+
+  // If navigated directly (e.g. refresh), extract propertyId from URL
+  const urlPropertyId = window.location.pathname.split('/property/')[1];
+  const propertyId = property?.id || urlPropertyId;
+
+  const [rooms, setRooms]                   = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [statsOpen, setStatsOpen]           = useState(false);
+  const [addRoomOpen, setAddRoomOpen]       = useState(false);
+  const [exportOpen, setExportOpen]         = useState(false);
+  const [selectedRoom, setSelectedRoom]     = useState(null);
+  const [toggleRoom, setToggleRoom]         = useState(null);
+  const [confirmState, setConfirmState]     = useState(null);
+  const [pendingData, setPendingData]       = useState({ year: 0, month: 0, pending: [] });
+
+  const fetchRooms = useCallback(async () => {
+    if (!propertyId) return;
+    setLoading(true);
     try {
-      const data = await api.getPendingRents();
+      const data = await api.getRooms(propertyId);
+      setRooms(data);
+    } catch {
+      toast.error('Failed to load rooms.');
+    } finally {
+      setLoading(false);
+    }
+  }, [propertyId]);
+
+  const fetchPending = useCallback(async () => {
+    if (!propertyId) return;
+    try {
+      const data = await api.getPendingRents(propertyId);
       setPendingData(data);
     } catch { /* silent */ }
-  }, []);
+  }, [propertyId]);
 
-  useEffect(() => {
-    fetchRooms();
-    fetchPending();
-  }, [fetchRooms, fetchPending]);
+  useEffect(() => { fetchRooms(); fetchPending(); }, [fetchRooms, fetchPending]);
 
   const handleRefresh = useCallback(async () => {
-    const data = await api.getRooms();
+    const data = await api.getRooms(propertyId);
     setRooms(data);
     if (selectedRoom) {
       const updated = data.find(r => r.id === selectedRoom.id);
       if (updated) setSelectedRoom(updated);
     }
     fetchPending();
-  }, [selectedRoom, fetchPending]);
+  }, [propertyId, selectedRoom, fetchPending]);
 
   const handleToggleRefresh = useCallback(async () => {
-    const data = await api.getRooms();
+    const data = await api.getRooms(propertyId);
     setRooms(data);
     fetchPending();
-  }, [fetchPending]);
+  }, [propertyId, fetchPending]);
 
-  // Opens the first confirmation modal
   const handleDeleteRoom = useCallback((room) => {
     setConfirmState({ room, step: 1 });
   }, []);
 
-  // Called when user clicks confirm inside the modal
   const handleConfirmStep = useCallback(async () => {
     const { room, step } = confirmState;
-    if (room.is_occupied && step === 1) {
-      // Occupied room — go to step 2
-      setConfirmState({ room, step: 2 });
-      return;
-    }
-    // Vacant room (step 1) or occupied room (step 2) — actually delete
+    if (room.is_occupied && step === 1) { setConfirmState({ room, step: 2 }); return; }
     setConfirmState(null);
     try {
       await api.deleteRoom(room.id);
       toast.success(`Room ${room.number} deleted.`);
-      fetchRooms();
-      fetchPending();
-    } catch (e) {
-      toast.error(e.message || 'Failed to delete room.');
-    }
+      fetchRooms(); fetchPending();
+    } catch (e) { toast.error(e.message || 'Failed to delete room.'); }
   }, [confirmState, fetchRooms, fetchPending]);
 
-  const occupiedRooms  = rooms.filter(r => r.is_occupied);
-  const totalBaseRent  = occupiedRooms.reduce((s, r) => s + (r.base_rent || 0), 0);
-  const pendingCount   = pendingData.pending?.length ?? 0;
+  const occupiedRooms = rooms.filter(r => r.is_occupied);
+  const totalBaseRent = occupiedRooms.reduce((s, r) => s + (r.base_rent || 0), 0);
+  const pendingCount  = pendingData.pending?.length ?? 0;
+
+  // Pass propertyId to modals that need it
+  const addRoomWithProperty = useCallback(async (data) => {
+    return api.addRoom(propertyId, data);
+  }, [propertyId]);
 
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="topbar-brand">
-          <div className="icon-wrap"><Building2 size={20} color="#fff" /></div>
-          <span>RentMaster <span style={{ color: 'var(--primary-light)' }}>AI</span></span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button onClick={onBack} className="btn btn-ghost btn-sm" title="Back to Properties"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <ArrowLeft size={15} /> Properties
+          </button>
+          <div className="topbar-brand">
+            <div className="icon-wrap"><Building2 size={20} color="#fff" /></div>
+            <span>
+              {property?.name
+                ? <><span style={{ color: 'var(--primary-light)' }}>{property.name}</span></>
+                : <>Rent<span style={{ color: 'var(--primary-light)' }}>Master</span></>}
+            </span>
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem', marginRight: '0.5rem' }}>
             <QuickPill label={`${occupiedRooms.length}/${rooms.length} Occupied`} color="var(--success)" />
             <QuickPill label={formatINR(totalBaseRent) + ' /mo'} color="var(--primary-light)" />
-            {pendingCount > 0 && (
-              <QuickPill label={`🔔 ${pendingCount} Pending`} color="var(--warning)" />
-            )}
+            {pendingCount > 0 && <QuickPill label={`🔔 ${pendingCount} Pending`} color="var(--warning)" />}
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => { fetchRooms(); fetchPending(); }} title="Refresh">
             <RefreshCw size={15} />
@@ -124,6 +199,10 @@ export default function App() {
           <button className="btn btn-primary" onClick={() => setAddRoomOpen(true)}>
             <PlusCircle size={17} /> Add Room
           </button>
+          <button className="btn btn-ghost btn-sm" onClick={onLogout}
+            title="Sign Out" style={{ color: 'var(--danger)' }}>
+            <LogOut size={15} />
+          </button>
         </div>
       </header>
 
@@ -132,22 +211,18 @@ export default function App() {
           <div className="loading-center"><div className="spinner" /></div>
         ) : (
           <>
-            {/* Pending Rent Reminder Banner */}
             <PendingRentBanner
               pending={pendingData.pending}
               year={pendingData.year}
               month={pendingData.month}
-              onBillCreated={() => { fetchPending(); }}
+              onBillCreated={() => fetchPending()}
             />
-
-            {/* Summary Cards */}
             <div className="stats-grid" style={{ marginBottom: '2rem' }}>
-              <SummaryCard icon={<Home size={20} />}         label="Total Rooms"   value={rooms.length}              sub={`${rooms.length - occupiedRooms.length} vacant`}    color="var(--primary-light)" />
-              <SummaryCard icon={<User size={20} />}         label="Tenants"       value={occupiedRooms.length}      sub="currently living"                                   color="var(--success)" />
-              <SummaryCard icon={<IndianRupee size={20} />}  label="Monthly Rent"  value={formatINR(totalBaseRent)}  sub="base rent collected"                                color="var(--warning)" />
+              <SummaryCard icon={<Home size={20} />}        label="Total Rooms"  value={rooms.length}             sub={`${rooms.length - occupiedRooms.length} vacant`} color="var(--primary-light)" />
+              <SummaryCard icon={<User size={20} />}        label="Tenants"      value={occupiedRooms.length}     sub="currently living"                                color="var(--success)" />
+              <SummaryCard icon={<IndianRupee size={20} />} label="Monthly Rent" value={formatINR(totalBaseRent)} sub="base rent collected"                             color="var(--warning)" />
             </div>
 
-            {/* Rooms Grid */}
             <div className="section-header">
               <span className="section-title">All Rooms</span>
               <span className="text-muted" style={{ fontSize: '0.88rem' }}>Click a room to manage · Use toggle to change status</span>
@@ -174,42 +249,26 @@ export default function App() {
         )}
       </main>
 
-      <StatsPanel isOpen={statsOpen} onClose={() => setStatsOpen(false)} />
-      <AddRoomModal isOpen={addRoomOpen} onClose={() => setAddRoomOpen(false)} onAdded={fetchRooms} />
-      <RoomDetailModal
-        room={selectedRoom}
-        isOpen={!!selectedRoom}
-        onClose={() => setSelectedRoom(null)}
-        onRefresh={handleRefresh}
-      />
+      <StatsPanel isOpen={statsOpen} onClose={() => setStatsOpen(false)} propertyId={propertyId} />
+      <AddRoomModal isOpen={addRoomOpen} onClose={() => setAddRoomOpen(false)} onAdded={fetchRooms} propertyId={propertyId} />
+      <RoomDetailModal room={selectedRoom} isOpen={!!selectedRoom} onClose={() => setSelectedRoom(null)} onRefresh={handleRefresh} />
 
-      {/* Delete confirmation modal — step 1 */}
       {confirmState?.step === 1 && (
-        <ConfirmModal
-          isOpen
+        <ConfirmModal isOpen
           title={confirmState.room.is_occupied ? 'Delete Occupied Room?' : `Delete Room ${confirmState.room.number}?`}
-          message={
-            confirmState.room.is_occupied
-              ? `Room ${confirmState.room.number} is currently occupied by ${confirmState.room.tenant_name}.`
-              : `Are you sure you want to delete Room ${confirmState.room.number}?`
-          }
-          subMessage={
-            confirmState.room.is_occupied
-              ? 'This will permanently remove the tenant and all billing history.'
-              : undefined
-          }
+          message={confirmState.room.is_occupied
+            ? `Room ${confirmState.room.number} is currently occupied by ${confirmState.room.tenant_name}.`
+            : `Are you sure you want to delete Room ${confirmState.room.number}?`}
+          subMessage={confirmState.room.is_occupied ? 'This will permanently remove the tenant and all billing history.' : undefined}
           confirmLabel={confirmState.room.is_occupied ? 'Continue' : 'Delete'}
           onConfirm={handleConfirmStep}
           onCancel={() => setConfirmState(null)}
         />
       )}
-
-      {/* Delete confirmation modal — step 2 (occupied rooms only) */}
       {confirmState?.step === 2 && (
-        <ConfirmModal
-          isOpen
+        <ConfirmModal isOpen
           title="Final Confirmation"
-          message={`You are about to permanently delete Room ${confirmState.room.number} and all its data.`}
+          message={`Permanently delete Room ${confirmState.room.number} and all its data?`}
           subMessage="This action cannot be undone."
           confirmLabel="Yes, Delete"
           onConfirm={handleConfirmStep}
@@ -217,18 +276,13 @@ export default function App() {
         />
       )}
 
-      <StatusToggleModal
-        room={toggleRoom}
-        isOpen={!!toggleRoom}
-        onClose={() => setToggleRoom(null)}
-        onRefresh={handleToggleRefresh}
-      />
-      <ExportModal isOpen={exportOpen} onClose={() => setExportOpen(false)} />
-      <ToastContainer />
+      <StatusToggleModal room={toggleRoom} isOpen={!!toggleRoom} onClose={() => setToggleRoom(null)} onRefresh={handleToggleRefresh} />
+      <ExportModal isOpen={exportOpen} onClose={() => setExportOpen(false)} propertyId={propertyId} />
     </div>
   );
 }
 
+// ── Shared components ─────────────────────────────────────────────────────────
 function QuickPill({ label, color }) {
   return (
     <span style={{ fontSize: '0.8rem', fontWeight: 600, color, background: `${color}18`, border: `1px solid ${color}30`, borderRadius: '999px', padding: '0.25rem 0.7rem' }}>
@@ -253,16 +307,9 @@ function RoomCard({ room, isPending, onClick, onToggleStatus, onDelete }) {
   const isOccupied = !!room.is_occupied;
   return (
     <div className="card room-card" onClick={onClick} style={{ position: 'relative' }}>
-      {/* Pending rent dot */}
       {isPending && (
-        <span style={{
-          position: 'absolute', top: '0.85rem', right: '0.85rem',
-          width: 9, height: 9, borderRadius: '50%',
-          background: 'var(--warning)', boxShadow: '0 0 6px var(--warning)',
-          display: 'inline-block',
-        }} title="Rent pending this month" />
+        <span style={{ position: 'absolute', top: '0.85rem', right: '0.85rem', width: 9, height: 9, borderRadius: '50%', background: 'var(--warning)', boxShadow: '0 0 6px var(--warning)', display: 'inline-block' }} title="Rent pending this month" />
       )}
-
       <div className="room-top">
         <div>
           <div className="room-number">Room {room.number}</div>
@@ -272,7 +319,6 @@ function RoomCard({ room, isPending, onClick, onToggleStatus, onDelete }) {
           {isOccupied ? 'Occupied' : 'Vacant'}
         </span>
       </div>
-
       <div className="room-info">
         <div className="info-row">
           <span className="info-label"><IndianRupee size={14} /> Base Rent</span>
@@ -285,85 +331,26 @@ function RoomCard({ room, isPending, onClick, onToggleStatus, onDelete }) {
           </div>
         )}
       </div>
-
       <div className="room-footer">
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {isOccupied ? `Since ${new Date(room.moved_in_at).toLocaleDateString('en-IN')}` : 'Available for rent'}
         </span>
-        <span style={{ fontSize: '0.82rem', color: 'var(--primary-light)', fontWeight: 500 }}>
-          View Details →
-        </span>
+        <span style={{ fontSize: '0.82rem', color: 'var(--primary-light)', fontWeight: 500 }}>View Details →</span>
       </div>
-
-      {/* Action buttons row */}
       <div style={{ marginTop: '0.9rem', display: 'flex', gap: '0.5rem' }}>
-        <button
-          onClick={onToggleStatus}
-          title={isOccupied ? 'Mark as Vacant' : 'Mark as Occupied'}
-          style={{
-            flex: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            padding: '0.55rem', borderRadius: '8px', cursor: 'pointer',
-            border: `1px solid ${isOccupied ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
-            background: isOccupied ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.07)',
-            color: isOccupied ? 'var(--danger)' : 'var(--success)',
-            fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s',
-          }}
+        <button onClick={onToggleStatus} title={isOccupied ? 'Mark as Vacant' : 'Mark as Occupied'}
+          style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.55rem', borderRadius: '8px', cursor: 'pointer', border: `1px solid ${isOccupied ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`, background: isOccupied ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.07)', color: isOccupied ? 'var(--danger)' : 'var(--success)', fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s' }}
           onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          {isOccupied
-            ? <><ToggleRight size={16} /> Mark as Vacant</>
-            : <><ToggleLeft  size={16} /> Mark as Occupied</>}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
+          {isOccupied ? <><ToggleRight size={16} /> Mark as Vacant</> : <><ToggleLeft size={16} /> Mark as Occupied</>}
         </button>
-
-        <button
-          onClick={onDelete}
-          title={isOccupied ? 'Delete room (tenant will also be removed)' : 'Delete this room'}
-          style={{
-            flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '2.4rem', height: '2.4rem', borderRadius: '8px', cursor: 'pointer',
-            border: '1px solid rgba(239,68,68,0.35)',
-            background: 'rgba(239,68,68,0.07)',
-            color: 'var(--danger)',
-            fontFamily: 'inherit', transition: 'all 0.2s',
-          }}
+        <button onClick={onDelete} title={isOccupied ? 'Delete room (tenant will also be removed)' : 'Delete this room'}
+          style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '2.4rem', height: '2.4rem', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.07)', color: 'var(--danger)', fontFamily: 'inherit', transition: 'all 0.2s' }}
           onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.07)'}
-        >
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.07)'}>
           <Trash2 size={15} />
         </button>
       </div>
-    </div>
-  );
-}
-
-function SyncBadge({ status }) {
-  const { online, pendingSyncCount } = status;
-  const label   = online ? 'Synced to Cloud' : 'Offline Mode';
-  const subtext = online
-    ? (pendingSyncCount > 0 ? `${pendingSyncCount} pending` : 'All synced')
-    : 'Working locally';
-  const color   = online ? 'var(--success)' : 'var(--warning)';
-  const Icon    = online ? Cloud : WifiOff;
-
-  return (
-    <div title={online ? `MongoDB Atlas connected · ${pendingSyncCount} unsynced records` : 'No internet — data saved locally, will sync when online'}
-      style={{
-        display: 'flex', alignItems: 'center', gap: '0.4rem',
-        padding: '0.3rem 0.7rem', borderRadius: '999px',
-        background: `${color}14`, border: `1px solid ${color}35`,
-        fontSize: '0.78rem', fontWeight: 600, color,
-        cursor: 'default', userSelect: 'none',
-      }}>
-      <Icon size={13} />
-      <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-        <span>{label}</span>
-        {pendingSyncCount > 0 && online && (
-          <span style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.8 }}>{subtext}</span>
-        )}
-      </span>
     </div>
   );
 }
