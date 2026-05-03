@@ -5,12 +5,14 @@ const mongoose = require('mongoose');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 
-const User     = require('./models/User');
-const Property = require('./models/Property');
-const Room     = require('./models/Room');
-const Tenant   = require('./models/Tenant');
-const Bill     = require('./models/Bill');
-const auth     = require('./middleware/auth');
+const User        = require('./models/User');
+const Property    = require('./models/Property');
+const Room        = require('./models/Room');
+const Tenant      = require('./models/Tenant');
+const Bill        = require('./models/Bill');
+const Maintenance = require('./models/Maintenance');
+const RentHistory = require('./models/RentHistory');
+const auth        = require('./middleware/auth');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -368,6 +370,129 @@ app.get('/api/properties/:propertyId/stats', auth, async (req, res) => {
 
 // ── HEALTH ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ status: 'ok', db: 'mongodb', ts: new Date() }));
+
+// ── AUTO-BILL GENERATION ──────────────────────────────────────────────────
+app.post('/api/properties/:propertyId/auto-bill', auth, async (req, res) => {
+  try {
+    if (!await getOwnedProperty(req.params.propertyId, req.user._id)) return res.status(403).json({ error: 'Forbidden' });
+    const now = new Date();
+    const year = Number(req.body.year  || now.getFullYear());
+    const month= Number(req.body.month || (now.getMonth() + 1));
+    const occupiedRooms = await Room.find({ propertyId: req.params.propertyId, isOccupied: true });
+    let created = 0, skipped = 0;
+    await Promise.all(occupiedRooms.map(async room => {
+      const tenant = await Tenant.findOne({ roomId: room._id, isCurrent: true });
+      if (!tenant) { skipped++; return; }
+      const existing = await Bill.findOne({ roomId: room._id, year, month });
+      if (existing) { skipped++; return; }
+      await Bill.create({ tenantId: tenant._id, roomId: room._id, year, month, rent: room.baseRent, electric: 0, water: 0, other: 0 });
+      created++;
+    }));
+    res.json({ success: true, created, skipped, year, month });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── LATE FEE CALCULATION ────────────────────────────────────────────────
+app.get('/api/properties/:propertyId/late-fees', auth, async (req, res) => {
+  try {
+    if (!await getOwnedProperty(req.params.propertyId, req.user._id)) return res.status(403).json({ error: 'Forbidden' });
+    const dueDay    = Number(req.query.due_day || 5);   // default: rent due on 5th
+    const feePerDay = Number(req.query.fee_per_day || 50); // ₹50/day late fee
+    const now  = new Date();
+    const year = now.getFullYear(), month = now.getMonth() + 1, today = now.getDate();
+    const occupiedRooms = await Room.find({ propertyId: req.params.propertyId, isOccupied: true });
+    const result = [];
+    await Promise.all(occupiedRooms.map(async room => {
+      const tenant = await Tenant.findOne({ roomId: room._id, isCurrent: true });
+      if (!tenant) return;
+      const bill = await Bill.findOne({ roomId: room._id, year, month });
+      if (!bill || bill.isPaid) return; // no bill or already paid → no late fee
+      const daysLate = today > dueDay ? today - dueDay : 0;
+      if (daysLate <= 0) return;
+      const lateFee = daysLate * feePerDay;
+      result.push({
+        room_id: room._id.toString(), room_number: room.number,
+        tenant_name: tenant.name, tenant_mobile: tenant.mobile,
+        bill_id: bill._id.toString(),
+        rent_due: bill.rent, days_late: daysLate,
+        fee_per_day: feePerDay, late_fee: lateFee,
+        due_date: `${year}-${String(month).padStart(2,'0')}-${String(dueDay).padStart(2,'0')}`,
+      });
+    }));
+    result.sort((a, b) => b.days_late - a.days_late);
+    res.json({ due_day: dueDay, fee_per_day: feePerDay, year, month, late_fees: result });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── MAINTENANCE LOG ───────────────────────────────────────────────────────
+app.get('/api/properties/:propertyId/maintenance', auth, async (req, res) => {
+  try {
+    if (!await getOwnedProperty(req.params.propertyId, req.user._id)) return res.status(403).json({ error: 'Forbidden' });
+    const filter = { propertyId: req.params.propertyId };
+    if (req.query.roomId) filter.roomId = req.query.roomId;
+    if (req.query.status) filter.status = req.query.status;
+    const items = await Maintenance.find(filter).populate('roomId', 'number').sort({ createdAt: -1 });
+    res.json(items.map(m => ({
+      id: m._id, room_id: m.roomId?._id, room_number: m.roomId?.number,
+      title: m.title, description: m.description, status: m.status,
+      priority: m.priority, resolved_at: m.resolvedAt, created_at: m.createdAt,
+    })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/properties/:propertyId/maintenance', auth, async (req, res) => {
+  try {
+    if (!await getOwnedProperty(req.params.propertyId, req.user._id)) return res.status(403).json({ error: 'Forbidden' });
+    const { roomId, title, description = '', priority = 'medium' } = req.body;
+    if (!roomId || !title) return res.status(400).json({ error: 'roomId and title required' });
+    const item = await Maintenance.create({ propertyId: req.params.propertyId, roomId, title, description, priority });
+    res.status(201).json({ id: item._id, room_id: item.roomId, title: item.title, description: item.description, status: item.status, priority: item.priority, created_at: item.createdAt });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/maintenance/:id', auth, async (req, res) => {
+  try {
+    const item = await Maintenance.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    const { status, title, description, priority } = req.body;
+    if (status)      { item.status = status; if (status === 'resolved') item.resolvedAt = new Date(); }
+    if (title)       item.title = title;
+    if (description !== undefined) item.description = description;
+    if (priority)    item.priority = priority;
+    await item.save();
+    res.json({ id: item._id, status: item.status, resolved_at: item.resolvedAt });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/maintenance/:id', auth, async (req, res) => {
+  try {
+    await Maintenance.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── RENT INCREASE HISTORY ───────────────────────────────────────────────
+app.get('/api/rooms/:id/rent-history', auth, async (req, res) => {
+  try {
+    const history = await RentHistory.find({ roomId: req.params.id }).sort({ changedAt: -1 });
+    res.json(history.map(h => ({ id: h._id, old_rent: h.oldRent, new_rent: h.newRent, reason: h.reason, changed_at: h.changedAt })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Override updateCurrentTenant to also log rent changes
+app.patch('/api/rooms/:roomId/rent', auth, async (req, res) => {
+  try {
+    const { new_rent, reason = '' } = req.body;
+    if (!new_rent) return res.status(400).json({ error: 'new_rent required' });
+    const room = await Room.findById(req.params.roomId);
+    if (!room) return res.status(404).json({ error: 'Room not found' });
+    const oldRent = room.baseRent;
+    room.baseRent = Number(new_rent);
+    await room.save();
+    await RentHistory.create({ roomId: room._id, oldRent, newRent: Number(new_rent), reason });
+    res.json({ success: true, old_rent: oldRent, new_rent: Number(new_rent) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // ── START ─────────────────────────────────────────────────────────────────────
 mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 10000 })

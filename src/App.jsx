@@ -229,6 +229,7 @@ function Dashboard({ property, user, onBack, onLogout, theme, onToggleTheme }) {
               year={pendingData.year}
               month={pendingData.month}
               onBillCreated={() => fetchPending()}
+              propertyId={propertyId}
             />
             <div className="stats-grid" style={{ marginBottom: '2rem' }}>
               <SummaryCard icon={<Home size={20} />}        label="Total Rooms"  value={rooms.length}             sub={`${rooms.length - occupiedRooms.length} vacant`} color="var(--primary-light)" />

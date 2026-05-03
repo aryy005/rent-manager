@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { BellRing, X, ChevronDown, ChevronUp, IndianRupee, CheckCircle } from 'lucide-react';
+import { BellRing, X, ChevronDown, ChevronUp, IndianRupee, CheckCircle, Zap } from 'lucide-react';
 import { api } from '../utils/api';
 import { toast } from '../utils/toast';
 import { formatINR, getMonthName, MONTH_NAMES } from '../utils/helpers';
+import WhatsAppButton from './WhatsAppButton';
 
-export default function PendingRentBanner({ pending, year, month, onBillCreated }) {
+export default function PendingRentBanner({ pending, year, month, onBillCreated, propertyId }) {
   const [expanded, setExpanded]   = useState(true);
   const [dismissed, setDismissed] = useState(false);
-  const [forms, setForms]         = useState({});   // roomId → bill form state
-  const [saving, setSaving]       = useState({});   // roomId → bool
+  const [forms, setForms]         = useState({});
+  const [saving, setSaving]       = useState({});
+  const [autoGen, setAutoGen]     = useState(false);
 
   if (dismissed || !pending || pending.length === 0) return null;
 
@@ -44,6 +46,16 @@ export default function PendingRentBanner({ pending, year, month, onBillCreated 
     } finally {
       setSaving(p => ({ ...p, [room.room_id]: false }));
     }
+  };
+
+  const handleAutoBill = async () => {
+    setAutoGen(true);
+    try {
+      const result = await api.autoBill(propertyId, year, month);
+      toast.success(`Auto-generated ${result.created} bill(s) for ${getMonthName(month)} ${year}. ${result.skipped} skipped.`);
+      onBillCreated();
+    } catch (e) { toast.error(e.message); }
+    finally { setAutoGen(false); }
   };
 
   const handleSaveUnpaid = async (room) => {
@@ -100,6 +112,17 @@ export default function PendingRentBanner({ pending, year, month, onBillCreated 
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {propertyId && (
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={e => { e.stopPropagation(); handleAutoBill(); }}
+              disabled={autoGen}
+              title="Auto-create bills for all occupied rooms this month"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+            >
+              <Zap size={13} />{autoGen ? 'Generating…' : 'Auto-Generate Bills'}
+            </button>
+          )}
           <button
             className="btn-icon"
             onClick={e => { e.stopPropagation(); setDismissed(true); }}
@@ -133,15 +156,18 @@ export default function PendingRentBanner({ pending, year, month, onBillCreated 
                       {room.tenant_name} · {room.tenant_mobile}
                     </span>
                   </div>
-                  {hasBill && (
-                    <span style={{
-                      fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem',
-                      borderRadius: '999px', background: 'rgba(245,158,11,0.15)',
-                      border: '1px solid rgba(245,158,11,0.3)', color: 'var(--warning)',
-                    }}>
-                      Bill created · Unpaid
-                    </span>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <WhatsAppButton room={room} year={year} month={month} total={(Number(getForm(room).rent)||0)+(Number(getForm(room).electric)||0)+(Number(getForm(room).water)||0)} />
+                    {hasBill && (
+                      <span style={{
+                        fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem',
+                        borderRadius: '999px', background: 'rgba(245,158,11,0.15)',
+                        border: '1px solid rgba(245,158,11,0.3)', color: 'var(--warning)',
+                      }}>
+                        Bill created · Unpaid
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Bill fields */}

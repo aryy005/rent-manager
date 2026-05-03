@@ -64,4 +64,27 @@ export const api = {
     const qs = new URLSearchParams(params).toString();
     return request(`/properties/${propertyId}/stats${qs ? `?${qs}` : ''}`);
   },
+
+  // ── Auto-bill generation ──────────────────────────────────────────────────
+  autoBill: (propertyId, year, month) =>
+    request(`/properties/${propertyId}/auto-bill`, { method: 'POST', body: { year, month } }),
+
+  // ── Late fees ─────────────────────────────────────────────────────────────
+  getLateFees: (propertyId, params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/properties/${propertyId}/late-fees${qs ? `?${qs}` : ''}`);
+  },
+
+  // ── Maintenance log ───────────────────────────────────────────────────────
+  getMaintenance:    (propertyId, params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/properties/${propertyId}/maintenance${qs ? `?${qs}` : ''}`);
+  },
+  addMaintenance:    (propertyId, data)  => request(`/properties/${propertyId}/maintenance`, { method: 'POST', body: data }),
+  updateMaintenance: (id, data)          => request(`/maintenance/${id}`,  { method: 'PATCH',  body: data }),
+  deleteMaintenance: (id)                => request(`/maintenance/${id}`,  { method: 'DELETE' }),
+
+  // ── Rent increase history ─────────────────────────────────────────────────
+  getRentHistory:  (roomId)       => request(`/rooms/${roomId}/rent-history`),
+  updateRent:      (roomId, data) => request(`/rooms/${roomId}/rent`, { method: 'PATCH', body: data }),
 };
