@@ -347,6 +347,53 @@ export default function RoomDetailModal({ room, isOpen, onClose, onRefresh }) {
             </div>
           )}
 
+          {/* ── HISTORY TAB ── */}
+          {tab === 'history' && (
+            <div>
+              <div className="stat-label" style={{ marginBottom: '1rem' }}>Tenant History</div>
+              {loading ? <div className="spinner" /> : history.length === 0 ? (
+                <div className="empty">
+                  <History size={40} />
+                  <p style={{ marginTop: '0.75rem' }}>No tenant history yet</p>
+                  <p style={{ fontSize: '0.82rem', marginTop: '0.3rem' }}>
+                    {isOccupied ? 'This tenant will appear here after they move out.' : 'Move in a tenant from the Overview tab.'}
+                  </p>
+                </div>
+              ) : history.map(t => (
+                <div key={t.id} className="history-item">
+                  <div style={{ flex: 1 }}>
+                    <div className="history-name" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {t.name}
+                      {t.is_current
+                        ? <span className="badge badge-occupied">Current</span>
+                        : <span className="badge badge-vacant">Past</span>}
+                    </div>
+                    <div className="history-meta">📱 {t.mobile} &nbsp;|&nbsp; 🪪 {maskAadhar(t.aadhar)}</div>
+                    <div className="history-meta" style={{ marginTop: '0.3rem' }}>
+                      📅 Moved in: <strong>{new Date(t.moved_in_at).toLocaleDateString('en-IN')}</strong>
+                      {t.moved_out_at && (
+                        <> &nbsp;→&nbsp; Moved out: <strong>{new Date(t.moved_out_at).toLocaleDateString('en-IN')}</strong></>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    {t.total_paid > 0 && (
+                      <>
+                        <div className="history-amount">{formatINR(t.total_paid)}</div>
+                        <div className="history-meta">Total paid</div>
+                      </>
+                    )}
+                    {t.base_rent > 0 && (
+                      <div className="history-meta" style={{ marginTop: '0.2rem' }}>
+                        ₹{t.base_rent}/mo
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* ── MAINTENANCE TAB ── */}
           {tab === 'maintenance' && (
             <div>
