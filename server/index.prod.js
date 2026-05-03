@@ -13,17 +13,30 @@ const PORT = process.env.PORT || 3001;
 // ── CORS — allow Vercel frontend + local dev ──────────────────────────────────
 const allowedOrigins = [
   process.env.FRONTEND_URL,            // set this on Render to your Vercel URL
+  'https://rent-manager-eta.vercel.app', // explicit fallback
   'http://localhost:3005',
   'http://localhost:3006',
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return cb(null, true);
+    // Allow any *.vercel.app subdomain and explicit origins
+    if (
+      allowedOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(origin)
+    ) return cb(null, true);
+    cb(new Error(`CORS: origin '${origin}' not allowed`));
   },
   credentials: true,
+  methods: ['GET','POST','PATCH','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
 }));
+
+// Explicitly handle preflight for all routes
+app.options('*', cors());
+
 app.use(express.json());
 
 // ── Shape helpers (map Mongoose docs → API shape frontend expects) ─────────────

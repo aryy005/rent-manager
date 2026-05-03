@@ -1,6 +1,8 @@
 // In production (Vercel), VITE_API_URL points to the Render backend.
 // In development, Vite proxies /api → localhost:3001.
-const BASE = (import.meta.env.VITE_API_URL ?? '') + '/api';
+// Hardcoded Render URL as fallback in case env var is missing from Vercel build.
+const RENDER_URL = 'https://rent-manager-wquz.onrender.com';
+const BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? RENDER_URL : '')) + '/api';
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, {
