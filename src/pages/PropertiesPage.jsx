@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2, PlusCircle, MapPin, Home, Users, IndianRupee,
-  LogOut, ChevronRight, Loader, X, Edit2, Trash2, RefreshCw
+  LogOut, ChevronRight, Loader, X, Edit2, Trash2, RefreshCw, Sun, Moon
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { authStore } from '../utils/auth';
@@ -16,7 +16,7 @@ const PROPERTY_TYPES = [
   { value: 'other',     label: '📦 Other' },
 ];
 
-export default function PropertiesPage({ user, onSelectProperty, onLogout }) {
+export default function PropertiesPage({ user, onSelectProperty, onLogout, theme, onToggleTheme }) {
   const [properties, setProperties]   = useState([]);
   const [loading, setLoading]         = useState(true);
   const [addOpen, setAddOpen]         = useState(false);
@@ -82,6 +82,10 @@ export default function PropertiesPage({ user, onSelectProperty, onLogout }) {
           </span>
           <button onClick={fetchProperties} className="btn btn-ghost btn-sm" title="Refresh">
             <RefreshCw size={15} />
+          </button>
+          <button onClick={onToggleTheme} className="btn btn-ghost btn-sm"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <button onClick={onLogout} className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}>
             <LogOut size={15} /> Sign Out

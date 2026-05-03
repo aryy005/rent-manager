@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Building2, BarChart2, PlusCircle, Home, User, IndianRupee,
          RefreshCw, ToggleLeft, ToggleRight, Download, Trash2,
-         ArrowLeft, LogOut } from 'lucide-react';
+         ArrowLeft, LogOut, Sun, Moon } from 'lucide-react';
 import { api } from './utils/api';
 import { authStore } from './utils/auth';
+import { themeStore } from './utils/theme';
 import { toast } from './utils/toast';
 import { formatINR } from './utils/helpers';
 import StatsPanel        from './components/StatsPanel';
@@ -22,7 +23,13 @@ import PropertiesPage    from './pages/PropertiesPage';
 export default function App() {
   const [user, setUser] = useState(() => authStore.getUser());
   const [selectedProperty, setSelectedProperty] = useState(null);
+  const [theme, setTheme] = useState(() => themeStore.get());
   const navigate = useNavigate();
+
+  const toggleTheme = () => {
+    const next = themeStore.toggle();
+    setTheme(next);
+  };
 
   // Keep user in sync on refresh
   useEffect(() => {
@@ -62,7 +69,7 @@ export default function App() {
         } />
         <Route path="/properties" element={
           authStore.isLoggedIn()
-            ? <PropertiesPage user={user} onSelectProperty={handleSelectProperty} onLogout={handleLogout} />
+            ? <PropertiesPage user={user} onSelectProperty={handleSelectProperty} onLogout={handleLogout} theme={theme} onToggleTheme={toggleTheme} />
             : <Navigate to="/login" replace />
         } />
         <Route path="/property/:propertyId" element={
@@ -72,6 +79,8 @@ export default function App() {
                 user={user}
                 onBack={handleBackToProperties}
                 onLogout={handleLogout}
+                theme={theme}
+                onToggleTheme={toggleTheme}
               />
             : <Navigate to="/login" replace />
         } />
@@ -83,7 +92,7 @@ export default function App() {
 }
 
 // ── Dashboard (existing room management, now property-scoped) ─────────────────
-function Dashboard({ property, user, onBack, onLogout }) {
+function Dashboard({ property, user, onBack, onLogout, theme, onToggleTheme }) {
   const navigate = useNavigate();
 
   // If navigated directly (e.g. refresh), extract propertyId from URL
@@ -189,6 +198,10 @@ function Dashboard({ property, user, onBack, onLogout }) {
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => { fetchRooms(); fetchPending(); }} title="Refresh">
             <RefreshCw size={15} />
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={onToggleTheme} title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            style={{ fontSize: '1rem' }}>
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
           <button className="btn btn-ghost" onClick={() => setStatsOpen(true)}>
             <BarChart2 size={17} /> Statistics
