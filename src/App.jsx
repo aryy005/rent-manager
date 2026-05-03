@@ -79,11 +79,7 @@ export default function App() {
       );
       if (!step2) return;
     } else {
-      // Single confirm for vacant rooms
-      const ok = window.confirm(
-        `Delete Room ${room.number}?\n\nThis will permanently remove the room and all its history. This cannot be undone.`
-      );
-      if (!ok) return;
+      if (!window.confirm(`Are you sure you want to delete Room ${room.number}?`)) return;
     }
     try {
       await api.deleteRoom(room.id);
