@@ -174,47 +174,59 @@ function Dashboard({ property, user, onBack, onLogout, theme, onToggleTheme }) {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={onBack} className="btn btn-ghost btn-sm" title="Back to Properties"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <ArrowLeft size={15} /> Properties
-          </button>
-          <div className="topbar-brand">
-            <div className="icon-wrap"><Building2 size={20} color="#fff" /></div>
-            <span>
-              {property?.name
-                ? <><span style={{ color: 'var(--primary-light)' }}>{property.name}</span></>
-                : <>Rent<span style={{ color: 'var(--primary-light)' }}>Master</span></>}
-            </span>
+      <header className="topbar" style={{ flexDirection: 'column', alignItems: 'stretch', height: 'auto', padding: '0.5rem 1rem' }}>
+        {/* Row 1: Back + Brand + Quick Stats + Logout */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', minHeight: '48px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0, flex: 1 }}>
+            <button onClick={onBack} className="btn btn-ghost btn-sm" title="Back to Properties"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, padding: '0.4rem 0.65rem' }}>
+              <ArrowLeft size={15} />
+              <span className="btn-label">Properties</span>
+            </button>
+            <div className="topbar-brand" style={{ fontSize: '1rem', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+              <div className="icon-wrap" style={{ width: 32, height: 32, flexShrink: 0 }}><Building2 size={17} color="#fff" /></div>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {property?.name
+                  ? <span style={{ color: 'var(--primary-light)' }}>{property.name}</span>
+                  : <>Rent<span style={{ color: 'var(--primary-light)' }}>Master</span></>}
+              </span>
+            </div>
           </div>
+
+          {/* Pills — hidden on mobile via CSS */}
+          <div className="topbar-pills" style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+            <QuickPill label={`${occupiedRooms.length}/${rooms.length}`} color="var(--success)" title="Occupied/Total" />
+            <QuickPill label={formatINR(totalBaseRent)} color="var(--primary-light)" title="Monthly Rent" />
+            {pendingCount > 0 && <QuickPill label={`🔔 ${pendingCount}`} color="var(--warning)" title="Pending" />}
+          </div>
+
+          <button className="btn btn-ghost btn-sm" onClick={onLogout}
+            title="Sign Out" style={{ color: 'var(--danger)', flexShrink: 0, padding: '0.4rem 0.65rem' }}>
+            <LogOut size={15} />
+          </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', marginRight: '0.5rem' }}>
-            <QuickPill label={`${occupiedRooms.length}/${rooms.length} Occupied`} color="var(--success)" />
-            <QuickPill label={formatINR(totalBaseRent) + ' /mo'} color="var(--primary-light)" />
-            {pendingCount > 0 && <QuickPill label={`🔔 ${pendingCount} Pending`} color="var(--warning)" />}
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => { fetchRooms(); fetchPending(); }} title="Refresh">
-            <RefreshCw size={15} />
+        {/* Row 2: Action buttons — horizontally scrollable on mobile */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '0.4rem',
+          overflowX: 'auto', paddingBottom: '0.4rem',
+          scrollbarWidth: 'none', msOverflowStyle: 'none',
+        }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => { fetchRooms(); fetchPending(); }} title="Refresh" style={{ flexShrink: 0 }}>
+            <RefreshCw size={14} />
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={onToggleTheme} title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            style={{ fontSize: '1rem' }}>
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          <button className="btn btn-ghost btn-sm" onClick={onToggleTheme}
+            title={theme === 'dark' ? 'Light Mode' : 'Dark Mode'} style={{ flexShrink: 0 }}>
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
-          <button className="btn btn-ghost" onClick={() => setStatsOpen(true)}>
-            <BarChart2 size={17} /> Statistics
+          <button className="btn btn-ghost btn-sm" onClick={() => setStatsOpen(true)} style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+            <BarChart2 size={14} /> <span className="btn-label">Statistics</span>
           </button>
-          <button className="btn btn-ghost" onClick={() => setExportOpen(true)}>
-            <Download size={17} /> Export
+          <button className="btn btn-ghost btn-sm" onClick={() => setExportOpen(true)} style={{ flexShrink: 0, whiteSpace: 'nowrap' }}>
+            <Download size={14} /> <span className="btn-label">Export</span>
           </button>
-          <button className="btn btn-primary" onClick={() => setAddRoomOpen(true)}>
-            <PlusCircle size={17} /> Add Room
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={onLogout}
-            title="Sign Out" style={{ color: 'var(--danger)' }}>
-            <LogOut size={15} />
+          <button className="btn btn-primary btn-sm" onClick={() => setAddRoomOpen(true)} style={{ flexShrink: 0, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
+            <PlusCircle size={14} /> Add Room
           </button>
         </div>
       </header>

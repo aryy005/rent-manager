@@ -60,26 +60,26 @@ export default function PropertiesPage({ user, onSelectProperty, onLogout, theme
       {/* Header */}
       <header style={{
         background: 'var(--surface)', borderBottom: '1px solid rgba(255,255,255,0.07)',
-        padding: '0 1.5rem', height: '64px', display: 'flex', alignItems: 'center',
+        padding: '0.5rem 1rem', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100,
-        backdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(12px)', flexWrap: 'wrap', gap: '0.4rem',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
           <div style={{
-            width: '2.2rem', height: '2.2rem', borderRadius: '10px',
+            width: '2rem', height: '2rem', borderRadius: '9px', flexShrink: 0,
             background: 'linear-gradient(135deg, var(--primary), var(--primary-light))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Building2 size={16} color="#fff" />
+            <Building2 size={15} color="#fff" />
           </div>
-          <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+          <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
             Rent<span style={{ color: 'var(--primary-light)' }}>Master</span>
           </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+          <span className="prop-user-greeting" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>
             👋 {user?.name}
           </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
           <button onClick={fetchProperties} className="btn btn-ghost btn-sm" title="Refresh">
             <RefreshCw size={15} />
           </button>
@@ -87,8 +87,8 @@ export default function PropertiesPage({ user, onSelectProperty, onLogout, theme
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
             {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button onClick={onLogout} className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}>
-            <LogOut size={15} /> Sign Out
+          <button onClick={onLogout} className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', whiteSpace: 'nowrap' }}>
+            <LogOut size={15} /> <span className="btn-label">Sign Out</span>
           </button>
         </div>
       </header>

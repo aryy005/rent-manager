@@ -354,3 +354,161 @@ body {
 
 /* inline spin for buttons */
 .spin { animation: spin 0.7s linear infinite; }
+
+/* ══════════════════════════════════════════
+   MOBILE RESPONSIVE  (≤ 640px)
+══════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* ─── Topbar ────────────────────────────── */
+  .topbar {
+    padding: 0 1rem;
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .topbar-brand {
+    font-size: 1.1rem;
+  }
+
+  /* Hide long text labels in buttons, keep icons */
+  .topbar .btn-label { display: none; }
+
+  /* Hide quick stat pills in topbar on mobile (shown in cards below) */
+  .topbar-pills { display: none !important; }
+
+  /* Hide user greeting on mobile */
+  .prop-user-greeting { display: none; }
+
+  /* Hide action-row scrollbar track on mobile */
+  .topbar div::-webkit-scrollbar { display: none; }
+
+  /* ─── Main content ──────────────────────── */
+  .main-content {
+    padding: 1rem;
+  }
+
+  /* ─── Stats grid — 2 cols on mobile ─────── */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-card { padding: 1rem; }
+  .stat-value { font-size: 1.5rem; }
+
+  /* ─── Rooms grid — 1 col on mobile ─────── */
+  .rooms-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* ─── Add room card ─────────────────────── */
+  .add-room-card { min-height: 140px; }
+
+  /* ─── Section header wraps ──────────────── */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  /* ─── Modals — full screen bottom sheet ─── */
+  .overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    border-radius: 20px 20px 0 0;
+    max-width: 100%;
+    max-height: 92vh;
+    width: 100%;
+  }
+
+  .modal-lg {
+    max-width: 100%;
+  }
+
+  .modal-head {
+    padding: 1.25rem 1.25rem 1rem;
+  }
+
+  .modal-body {
+    padding: 1rem 1.25rem;
+  }
+
+  .modal-foot {
+    padding: 1rem 1.25rem;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .modal-foot .btn { width: 100%; justify-content: center; }
+
+  /* ─── Form grid — 1 col on mobile ──────── */
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-group.full { grid-column: 1; }
+
+  /* ─── Tabs — smaller text ───────────────── */
+  .tabs { gap: 0.15rem; }
+  .tab  { font-size: 0.78rem; padding: 0.45rem 0.4rem; }
+
+  /* ─── Buttons — min touch target ───────── */
+  .btn  { min-height: 44px; }
+  .btn-sm { min-height: 36px; }
+
+  /* ─── Filter bar ────────────────────────── */
+  .filter-bar { gap: 0.4rem; }
+  .filter-select { font-size: 0.82rem; padding: 0.4rem 0.6rem; }
+
+  /* ─── History / bill rows ───────────────── */
+  .history-item {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .bill-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .bill-breakdown { flex-wrap: wrap; gap: 0.4rem; }
+
+  /* ─── Info grid in overview ─────────────── */
+  .info-row { font-size: 0.85rem; }
+}
+
+/* ─── Slightly larger screens (tablet) ─────── */
+@media (max-width: 900px) {
+  .main-content { padding: 1.25rem; }
+
+  .rooms-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+/* ─── Touch: bigger tap targets everywhere ── */
+@media (hover: none) and (pointer: coarse) {
+  .btn      { min-height: 44px; }
+  .btn-sm   { min-height: 40px; }
+  .btn-icon { width: 44px; height: 44px; }
+  .tab      { padding: 0.6rem 0.5rem; }
+  .form-input   { padding: 0.75rem 0.9rem; font-size: 1rem; }
+  .filter-select{ padding: 0.6rem 0.75rem; font-size: 1rem; }
+
+  /* No hover transforms on touch */
+  .card:hover { transform: none; }
+  .room-card:hover { transform: none; }
+}
+
+/* ─── Prevent horizontal scroll ────────────── */
+html, body { max-width: 100vw; overflow-x: hidden; }
+
