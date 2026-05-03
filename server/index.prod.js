@@ -290,14 +290,17 @@ app.post('/api/rooms/:id/bills', auth, async (req, res) => {
     const roomId = req.params.id;
     const tenant = await Tenant.findOne({ roomId, isCurrent: true });
     if (!tenant) return res.status(400).json({ error: 'No current tenant' });
-    const existing = await Bill.findOne({ roomId, year: Number(year), month: Number(month) });
+
+    // KEY FIX: scope to tenantId, not just roomId
+    // This allows a new tenant to have their own bill even in the same month
+    const existing = await Bill.findOne({ tenantId: tenant._id, year: Number(year), month: Number(month) });
     if (existing) {
       Object.assign(existing, { rent, electric, water, other });
       await existing.save();
-      return res.json(billShape(existing));
+      return res.json(billShape(existing, tenant.name));
     }
     const bill = await Bill.create({ tenantId: tenant._id, roomId, year: Number(year), month: Number(month), rent, electric, water, other });
-    res.status(201).json(billShape(bill));
+    res.status(201).json(billShape(bill, tenant.name));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -325,7 +328,8 @@ app.get('/api/properties/:propertyId/pending-rents', auth, async (req, res) => {
     await Promise.all(occupiedRooms.map(async room => {
       const tenant = await Tenant.findOne({ roomId: room._id, isCurrent: true });
       if (!tenant) return;
-      const bill = await Bill.findOne({ roomId: room._id, year, month });
+      // KEY FIX: look up bill by tenantId so we get THIS tenant's bill, not a previous tenant's
+      const bill = await Bill.findOne({ tenantId: tenant._id, year, month });
       if (!bill || !bill.isPaid) {
         pending.push({
           room_id: room._id.toString(), room_number: room.number, base_rent: room.baseRent,

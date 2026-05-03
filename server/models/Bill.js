@@ -14,7 +14,9 @@ const BillSchema = new mongoose.Schema({
   paidAt:    { type: Date,    default: null },
 }, { timestamps: true });
 
-// One bill per room per month
-BillSchema.index({ roomId: 1, year: 1, month: 1 }, { unique: true });
+// One bill per TENANT per month (not per room) — allows new tenant bill in same month as old tenant
+BillSchema.index({ tenantId: 1, year: 1, month: 1 }, { unique: true });
+// Keep room+month index for fast lookups (non-unique)
+BillSchema.index({ roomId: 1, year: 1, month: 1 });
 
 module.exports = mongoose.model('Bill', BillSchema);
