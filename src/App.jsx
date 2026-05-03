@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Building2, BarChart2, PlusCircle, Home, User, IndianRupee, RefreshCw, ToggleLeft, ToggleRight, Download } from 'lucide-react';
+import { Building2, BarChart2, PlusCircle, Home, User, IndianRupee, RefreshCw, ToggleLeft, ToggleRight, Download, Trash2 } from 'lucide-react';
 import { api } from './utils/api';
 import { toast } from './utils/toast';
 import { formatINR } from './utils/helpers';
@@ -63,6 +63,37 @@ export default function App() {
     setRooms(data);
     fetchPending();
   }, [fetchPending]);
+
+  const handleDeleteRoom = useCallback(async (room) => {
+    if (room.is_occupied) {
+      // Step 1 — warn about tenant data loss
+      const step1 = window.confirm(
+        `⚠️ Room ${room.number} is currently occupied by ${room.tenant_name}.\n\n` +
+        `Deleting this room will permanently remove the tenant and ALL billing history.\n\n` +
+        `Are you sure you want to continue?`
+      );
+      if (!step1) return;
+      // Step 2 — final confirmation
+      const step2 = window.confirm(
+        `🚨 FINAL CONFIRMATION\n\nYou are about to permanently delete Room ${room.number} and all its data. This CANNOT be undone.\n\nClick OK to delete.`
+      );
+      if (!step2) return;
+    } else {
+      // Single confirm for vacant rooms
+      const ok = window.confirm(
+        `Delete Room ${room.number}?\n\nThis will permanently remove the room and all its history. This cannot be undone.`
+      );
+      if (!ok) return;
+    }
+    try {
+      await api.deleteRoom(room.id);
+      toast.success(`Room ${room.number} deleted.`);
+      fetchRooms();
+      fetchPending();
+    } catch (e) {
+      toast.error(e.message || 'Failed to delete room.');
+    }
+  }, [fetchRooms, fetchPending]);
 
   const occupiedRooms  = rooms.filter(r => r.is_occupied);
   const totalBaseRent  = occupiedRooms.reduce((s, r) => s + (r.base_rent || 0), 0);
@@ -133,6 +164,7 @@ export default function App() {
                   isPending={pendingData.pending?.some(p => p.room_id === room.id)}
                   onClick={() => setSelectedRoom(room)}
                   onToggleStatus={e => { e.stopPropagation(); setToggleRoom(room); }}
+                  onDelete={e => { e.stopPropagation(); handleDeleteRoom(room); }}
                 />
               ))}
               <button className="add-room-card" onClick={() => setAddRoomOpen(true)}>
@@ -185,7 +217,7 @@ function SummaryCard({ icon, label, value, sub, color }) {
   );
 }
 
-function RoomCard({ room, isPending, onClick, onToggleStatus }) {
+function RoomCard({ room, isPending, onClick, onToggleStatus, onDelete }) {
   const isOccupied = !!room.is_occupied;
   return (
     <div className="card room-card" onClick={onClick} style={{ position: 'relative' }}>
@@ -231,25 +263,46 @@ function RoomCard({ room, isPending, onClick, onToggleStatus }) {
         </span>
       </div>
 
-      <button
-        onClick={onToggleStatus}
-        title={isOccupied ? 'Mark as Vacant' : 'Mark as Occupied'}
-        style={{
-          marginTop: '0.9rem', width: '100%',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-          padding: '0.55rem', borderRadius: '8px', cursor: 'pointer',
-          border: `1px solid ${isOccupied ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
-          background: isOccupied ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.07)',
-          color: isOccupied ? 'var(--danger)' : 'var(--success)',
-          fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
-        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-      >
-        {isOccupied
-          ? <><ToggleRight size={16} /> Mark as Vacant</>
-          : <><ToggleLeft  size={16} /> Mark as Occupied</>}
-      </button>
+      {/* Action buttons row */}
+      <div style={{ marginTop: '0.9rem', display: 'flex', gap: '0.5rem' }}>
+        <button
+          onClick={onToggleStatus}
+          title={isOccupied ? 'Mark as Vacant' : 'Mark as Occupied'}
+          style={{
+            flex: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+            padding: '0.55rem', borderRadius: '8px', cursor: 'pointer',
+            border: `1px solid ${isOccupied ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+            background: isOccupied ? 'rgba(239,68,68,0.07)' : 'rgba(16,185,129,0.07)',
+            color: isOccupied ? 'var(--danger)' : 'var(--success)',
+            fontSize: '0.82rem', fontWeight: 600, fontFamily: 'inherit', transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = '0.75'}
+          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+        >
+          {isOccupied
+            ? <><ToggleRight size={16} /> Mark as Vacant</>
+            : <><ToggleLeft  size={16} /> Mark as Occupied</>}
+        </button>
+
+        <button
+          onClick={onDelete}
+          title={isOccupied ? 'Delete room (tenant will also be removed)' : 'Delete this room'}
+          style={{
+            flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '2.4rem', height: '2.4rem', borderRadius: '8px', cursor: 'pointer',
+            border: '1px solid rgba(239,68,68,0.35)',
+            background: 'rgba(239,68,68,0.07)',
+            color: 'var(--danger)',
+            fontFamily: 'inherit', transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.07)'}
+        >
+          <Trash2 size={15} />
+        </button>
+      </div>
     </div>
   );
 }
