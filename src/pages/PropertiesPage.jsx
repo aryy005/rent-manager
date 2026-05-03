@@ -184,6 +184,7 @@ function PropertyCard({ prop, onSelect, onEdit, onDelete }) {
         background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: '16px', padding: '1.5rem', cursor: 'pointer',
         transition: 'all 0.2s', position: 'relative',
+        overflow: 'hidden',
       }}
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 16px 40px rgba(0,0,0,0.3)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
@@ -207,10 +208,14 @@ function PropertyCard({ prop, onSelect, onEdit, onDelete }) {
       )}
 
       {/* Stats */}
-      <div style={{ display: 'flex', gap: '1rem', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-        <StatPill icon={<Home size={13} />} value={prop.total_rooms} label="Rooms" color="var(--primary-light)" />
-        <StatPill icon={<Users size={13} />} value={prop.occupied_rooms} label="Occupied" color="var(--success)" />
-        <StatPill icon={<Home size={13} />} value={prop.total_rooms - prop.occupied_rooms} label="Vacant" color="var(--warning)" />
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem',
+        marginTop: '1.25rem', paddingTop: '1rem',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <StatPill icon={<Home size={13} />}  value={prop.total_rooms}                         label="Rooms"    color="var(--primary-light)" />
+        <StatPill icon={<Users size={13} />} value={prop.occupied_rooms}                      label="Occupied" color="var(--success)" />
+        <StatPill icon={<Home size={13} />}  value={prop.total_rooms - prop.occupied_rooms}   label="Vacant"  color="var(--warning)" />
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: '1rem', color: 'var(--primary-light)', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -222,7 +227,11 @@ function PropertyCard({ prop, onSelect, onEdit, onDelete }) {
 
 function StatPill({ icon, value, label, color }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem', color }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '0.3rem',
+      fontSize: '0.8rem', color, whiteSpace: 'nowrap',
+      flexShrink: 0,
+    }}>
       {icon} <strong>{value}</strong> <span style={{ color: 'var(--text-muted)' }}>{label}</span>
     </div>
   );
