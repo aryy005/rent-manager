@@ -1,0 +1,44 @@
+{
+  "name": "RentMaster – Rent Management App",
+  "short_name": "RentMaster",
+  "description": "The all-in-one rent management app for Indian landlords. Track rooms, collect rent, export reports.",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f59e0b",
+  "theme_color": "#f59e0b",
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "categories": ["finance", "productivity", "business"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Properties",
+      "short_name": "Properties",
+      "url": "/?view=properties",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": []
+}

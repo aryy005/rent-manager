@@ -2,16 +2,67 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+
+    <!-- ── App Identity ── -->
+    <title>RentMaster – Rent Management App</title>
+    <meta name="description" content="The all-in-one rent management app for Indian landlords. Track rooms, collect rent, export reports and send WhatsApp reminders." />
+    <meta name="keywords" content="rent management, landlord app, property management, tenant tracking, India" />
+    <meta name="author" content="RentMaster" />
+
+    <!-- ── Viewport & Mobile ── -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#070b14" />
-    <title>RentMaster — Property Management</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="RentMaster" />
+    <meta name="application-name" content="RentMaster" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- ── Theme colors ── -->
+    <meta name="theme-color" content="#f59e0b" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#d97706" media="(prefers-color-scheme: dark)" />
+    <meta name="msapplication-TileColor" content="#f59e0b" />
+
+    <!-- ── PWA Manifest ── -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- ── Icons ── -->
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+
+    <!-- ── Apple splash screens (optional, for add-to-home-screen) ── -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- ── Open Graph (share previews) ── -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="RentMaster – Rent Management App" />
+    <meta property="og:description" content="Track rooms, collect rent, export reports — all in one app." />
+    <meta property="og:image" content="/icon-512.png" />
+
+    <!-- ── Google Fonts ── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- ── Prevent FOUC ── -->
+    <style>
+      html, body { margin: 0; padding: 0; background: #faf7f2; }
+      #root { min-height: 100vh; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- ── Register Service Worker ── -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('[SW] Registered:', reg.scope))
+            .catch(err => console.warn('[SW] Failed:', err));
+        });
+      }
+    </script>
   </body>
 </html>

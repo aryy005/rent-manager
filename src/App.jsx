@@ -19,6 +19,7 @@ import ToastContainer    from './components/ToastContainer';
 import ConfirmModal      from './components/ConfirmModal';
 import AuthPage          from './pages/AuthPage';
 import PropertiesPage    from './pages/PropertiesPage';
+import InstallPrompt     from './components/InstallPrompt';
 
 // ── Root App ──────────────────────────────────────────────────────────────────
 export default function App() {
@@ -91,6 +92,7 @@ export default function App() {
         <Route path="*" element={<Navigate to={authStore.isLoggedIn() ? '/properties' : '/login'} replace />} />
       </Routes>
       <ToastContainer />
+      <InstallPrompt />
     </>
   );
 }
