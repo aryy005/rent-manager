@@ -213,7 +213,7 @@ export default function AuthPage({ onAuth }) {
               <Field
                 icon={<User size={17} />}
                 label="Full Name"
-                placeholder="e.g. Aryan Malik"
+                placeholder="e.g. Xyz"
                 value={form.name}
                 onChange={update('name')}
                 autoComplete="name"
